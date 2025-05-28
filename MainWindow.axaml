@@ -4,6 +4,43 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="CarWorkshop.MainWindow"
-        Title="CarWorkshop">
-    Welcome to Avalonia!
+        Title="CarWorkshop"
+        Background="#232023">
+    <Grid>
+        <Image Source="avares://CarWorkshop/Assets/background.jpg" Stretch="UniformToFill" IsHitTestVisible="False" Opacity="0.1"></Image>      
+        <ScrollViewer>
+                <StackPanel Margin="60" Spacing="30" >
+                        <TextBlock Text="Welcome to our car workshop!" Margin="0,0,0,60" FontSize="26" FontWeight="Bold" FontFamily="Georgia" TextAlignment="Center" Foreground="#ffd6ff"></TextBlock>
+                        <TextBlock Text="Please enter the car owner details:" FontSize="18" FontFamily="Georgia" TextAlignment="Left" Foreground="#bbd0ff"></TextBlock>
+                        <Grid Margin="120,0">
+                                <TextBox x:Name="CarOwnerName" Watermark="Name" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Left"></TextBox>
+                                <TextBox x:Name="CarOwnerPhone" Watermark="Phone" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Right"></TextBox>
+                        </Grid>
+                        <TextBlock Text="Please enter the car details:" FontSize="18" FontFamily="Georgia" TextAlignment="Left" Foreground="#bbd0ff"></TextBlock>
+                        <Grid Margin="120,0">
+                                <TextBox x:Name="CarBrand" Watermark="Brand" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Left"></TextBox>
+                                <TextBox x:Name="CarModel" Watermark="Model" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Right"></TextBox>
+                        </Grid>
+                        <TextBlock Text="Please enter the parts needed:" FontSize="18" FontFamily="Georgia" TextAlignment="Left" Foreground="#bbd0ff"></TextBlock>
+                        <Grid Margin="120,0">
+                                <TextBox x:Name="PartName" Watermark="Part name" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Left"></TextBox>
+                                <TextBox x:Name="PartPrice" Watermark="Part price" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Right"></TextBox>
+                        </Grid>
+                        <TextBlock Text="Please enter the service details:" FontSize="18" FontFamily="Georgia" TextAlignment="Left" Foreground="#bbd0ff"></TextBlock>
+                        <Grid Margin="120,0">
+                                <TextBox x:Name="ServiceType" Watermark="Service type" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Left"></TextBox>
+                                <TextBox x:Name="ServicePrice" Watermark="Service price" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Right"></TextBox>
+                        </Grid>
+                        <StackPanel Margin="120,0" Spacing="20" >
+                                <Button x:Name="SaveButton" Click="SaveDataOnClick" Content="Save" HorizontalAlignment="Right" Foreground="#c8b6ff" FontFamily="Georgia" FontSize="18"></Button>
+                                <Button x:Name="PrintInvoiceButton" Click="PrintInvoiceOnClick" Content="Print Invoice" HorizontalAlignment="Right" Foreground="#c8b6ff" FontFamily="Georgia" FontSize="18"></Button>
+                        </StackPanel>   
+                
+                        <TextBlock Text="Search for a car by entering the car owner's name" Margin="0,60,0,0" FontSize="18" FontFamily="Georgia" Foreground="#bbd0ff"></TextBlock>
+                        <TextBox x:Name="SearchCar" Margin="120,0" Watermark="..." FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff"></TextBox>
+                        <Button x:Name="SearchCarButton" Margin="120,0" Content="Search" HorizontalAlignment="Right" Foreground="#c8b6ff" FontFamily="Georgia" FontSize="18"></Button>
+                        <TextBox x:Name="SearchResult" Margin="120,0" FontSize="18" FontFamily="Georgia" Foreground="#bbd0ff" Height="200" IsReadOnly="True"></TextBox>
+                </StackPanel>
+        </ScrollViewer>   
+</Grid>          
 </Window>
