@@ -1,8 +1,8 @@
 ﻿namespace CarWorkshop.Classes;
 
-public abstract class Parts
+public class Parts
 {
-    public int PartId { get; set; }
-    public required string PartName { get; set; }
-    public decimal PartPrice { get; set; }
+    public int Part_id { get; set; }
+    public required string Part_name { get; set; }
+    public decimal Part_price { get; set; }
 }

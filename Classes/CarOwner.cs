@@ -1,8 +1,8 @@
 ﻿namespace CarWorkshop.Classes;
 
-public abstract class CarOwner
+public class CarOwner
 {
-    public int OwnerId { get; set; }
+    public int Owner_id { get; set; }
     public required string Name { get; set; }
     public required string Phone { get; set; }
 }

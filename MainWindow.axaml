@@ -2,45 +2,241 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
         x:Class="CarWorkshop.MainWindow"
         Title="CarWorkshop"
-        Background="#232023">
+        Background="#232023"
+        Loaded="WindowLoaded"
+        MinWidth="900" MinHeight="600"
+        >
     <Grid>
         <Image Source="avares://CarWorkshop/Assets/background.jpg" Stretch="UniformToFill" IsHitTestVisible="False" Opacity="0.1"></Image>      
-        <ScrollViewer>
-                <StackPanel Margin="60" Spacing="30" >
-                        <TextBlock Text="Welcome to our car workshop!" Margin="0,0,0,60" FontSize="26" FontWeight="Bold" FontFamily="Georgia" TextAlignment="Center" Foreground="#ffd6ff"></TextBlock>
-                        <TextBlock Text="Please enter the car owner details:" FontSize="18" FontFamily="Georgia" TextAlignment="Left" Foreground="#bbd0ff"></TextBlock>
-                        <Grid Margin="120,0">
-                                <TextBox x:Name="CarOwnerName" Watermark="Name" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Left"></TextBox>
-                                <TextBox x:Name="CarOwnerPhone" Watermark="Phone" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Right"></TextBox>
-                        </Grid>
-                        <TextBlock Text="Please enter the car details:" FontSize="18" FontFamily="Georgia" TextAlignment="Left" Foreground="#bbd0ff"></TextBlock>
-                        <Grid Margin="120,0">
-                                <TextBox x:Name="CarBrand" Watermark="Brand" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Left"></TextBox>
-                                <TextBox x:Name="CarModel" Watermark="Model" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Right"></TextBox>
-                        </Grid>
-                        <TextBlock Text="Please enter the parts needed:" FontSize="18" FontFamily="Georgia" TextAlignment="Left" Foreground="#bbd0ff"></TextBlock>
-                        <Grid Margin="120,0">
-                                <TextBox x:Name="PartName" Watermark="Part name" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Left"></TextBox>
-                                <TextBox x:Name="PartPrice" Watermark="Part price" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Right"></TextBox>
-                        </Grid>
-                        <TextBlock Text="Please enter the service details:" FontSize="18" FontFamily="Georgia" TextAlignment="Left" Foreground="#bbd0ff"></TextBlock>
-                        <Grid Margin="120,0">
-                                <TextBox x:Name="ServiceType" Watermark="Service type" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Left"></TextBox>
-                                <TextBox x:Name="ServicePrice" Watermark="Service price" FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff" Width="225" HorizontalAlignment="Right"></TextBox>
-                        </Grid>
-                        <StackPanel Margin="120,0" Spacing="20" >
-                                <Button x:Name="SaveButton" Click="SaveDataOnClick" Content="Save" HorizontalAlignment="Right" Foreground="#c8b6ff" FontFamily="Georgia" FontSize="18"></Button>
-                                <Button x:Name="PrintInvoiceButton" Click="PrintInvoiceOnClick" Content="Print Invoice" HorizontalAlignment="Right" Foreground="#c8b6ff" FontFamily="Georgia" FontSize="18"></Button>
-                        </StackPanel>   
+        <ScrollViewer Padding="20">
+            <StackPanel Spacing="30" MaxWidth="1100" HorizontalAlignment="Center" Margin="0,0,0,60">
+                <TextBlock Text="Welcome to our car workshop!" 
+                          FontSize="32" FontWeight="Bold" FontFamily="Georgia" 
+                          TextAlignment="Center" Foreground="#ffd6ff" 
+                          Margin="0,20,0,40"></TextBlock>
+                        
+                <!-- Status/Feedback Area -->
+                <TextBlock x:Name="StatusText" Text="" FontSize="16" FontFamily="Georgia" 
+                          TextAlignment="Center" Foreground="#90EE90" FontWeight="Bold" 
+                          Margin="0,0,0,20"></TextBlock>
                 
-                        <TextBlock Text="Search for a car by entering the car owner's name" Margin="0,60,0,0" FontSize="18" FontFamily="Georgia" Foreground="#bbd0ff"></TextBlock>
-                        <TextBox x:Name="SearchCar" Margin="120,0" Watermark="..." FontSize="16" FontFamily="Georgia" Foreground="#bbd0ff"></TextBox>
-                        <Button x:Name="SearchCarButton" Margin="120,0" Content="Search" HorizontalAlignment="Right" Foreground="#c8b6ff" FontFamily="Georgia" FontSize="18"></Button>
-                        <TextBox x:Name="SearchResult" Margin="120,0" FontSize="18" FontFamily="Georgia" Foreground="#bbd0ff" Height="200" IsReadOnly="True"></TextBox>
-                </StackPanel>
+                <!-- Main Content Grid - Two Columns -->
+                <Grid ColumnDefinitions="1*,20,1*" RowDefinitions="Auto,20,Auto,20,Auto" MaxWidth="1100">
+                    
+                    <!-- Left Column -->
+                    
+                    <!-- Car Owner Section - Left Column -->
+                    <Border Grid.Column="0" Grid.Row="0" Background="#1a1a1a" CornerRadius="10" Padding="25" BorderBrush="#444" BorderThickness="1">
+                        <StackPanel Spacing="20">
+                            <TextBlock Text="Car Owner Details" FontSize="18" FontWeight="Bold" 
+                                      FontFamily="Georgia" Foreground="#bbd0ff" 
+                                      HorizontalAlignment="Center"></TextBlock>
+                            
+                            <StackPanel Spacing="15">
+                                <!-- Owner Name Row -->
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Owner Name:" FontSize="14" FontFamily="Georgia" Foreground="#bbd0ff"></TextBlock>
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <ComboBox x:Name="CarOwnerNameDropdown" Width="250" FontSize="14" 
+                                                 FontFamily="Georgia" Foreground="#bbd0ff" 
+                                                 SelectionChanged="CarOwnerDropdownSelectionChanged"></ComboBox>
+                                        <Button x:Name="EditOwnerNameButton" Content="Edit" Width="60" Height="32"
+                                               FontSize="12" FontFamily="Georgia" Foreground="#c8b6ff"
+                                               Click="EditOwnerNameButtonClick" HorizontalContentAlignment="Center"></Button>
+                                    </StackPanel>
+                                    <!-- Hidden text input for owner name -->
+                                    <TextBox x:Name="CarOwnerName" Width="250" FontSize="14" 
+                                            FontFamily="Georgia" Foreground="#bbd0ff" Watermark="Enter new owner name"
+                                            TextChanged="CarOwnerNameTextChanged" IsVisible="False" HorizontalAlignment="Left"></TextBox>
+                                </StackPanel>
+                                
+                                <!-- Phone Row -->
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Phone Number:" FontSize="14" FontFamily="Georgia" Foreground="#bbd0ff"></TextBlock>
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBox x:Name="CarOwnerPhone" Width="250" FontSize="14" 
+                                                FontFamily="Georgia" Foreground="#bbd0ff" 
+                                                Watermark="Phone" IsReadOnly="True"></TextBox>
+                                        <Button x:Name="EditPhoneButton" Content="Edit" Width="60" Height="32"
+                                               FontSize="12" FontFamily="Georgia" Foreground="#c8b6ff"
+                                               Click="EditPhoneButtonClick" HorizontalContentAlignment="Center"></Button>
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Car Details Section - Right Column -->
+                    <Border Grid.Column="2" Grid.Row="0" Background="#1a1a1a" CornerRadius="10" Padding="25" BorderBrush="#444" BorderThickness="1">
+                        <StackPanel Spacing="20">
+                            <TextBlock Text="Car Details" FontSize="18" FontWeight="Bold" 
+                                      FontFamily="Georgia" Foreground="#bbd0ff" 
+                                      HorizontalAlignment="Center"></TextBlock>
+                            
+                            <StackPanel Spacing="15">
+                                <!-- Brand -->
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Car Brand:" FontSize="14" FontFamily="Georgia" Foreground="#bbd0ff"></TextBlock>
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <ComboBox x:Name="CarBrandDropdown" Width="250" FontSize="14" 
+                                                 FontFamily="Georgia" Foreground="#bbd0ff" 
+                                                 SelectionChanged="CarBrandDropdownSelectionChanged"></ComboBox>
+                                        <Button x:Name="EditBrandButton" Content="Edit" Width="60" Height="32"
+                                               FontSize="12" FontFamily="Georgia" Foreground="#c8b6ff"
+                                               Click="EditBrandButtonClick" HorizontalContentAlignment="Center"></Button>
+                                    </StackPanel>
+                                    <!-- Hidden text input for brand -->
+                                    <TextBox x:Name="CarBrand" Width="250" FontSize="14" 
+                                            FontFamily="Georgia" Foreground="#bbd0ff" Watermark="Enter new brand"
+                                            IsVisible="False" HorizontalAlignment="Left"></TextBox>
+                                </StackPanel>
+                                
+                                <!-- Model -->
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Car Model:" FontSize="14" FontFamily="Georgia" Foreground="#bbd0ff"></TextBlock>
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <ComboBox x:Name="CarModelDropdown" Width="250" FontSize="14" 
+                                                 FontFamily="Georgia" Foreground="#bbd0ff" 
+                                                 SelectionChanged="CarModelDropdownSelectionChanged"></ComboBox>
+                                        <Button x:Name="EditModelButton" Content="Edit" Width="60" Height="32"
+                                               FontSize="12" FontFamily="Georgia" Foreground="#c8b6ff"
+                                               Click="EditModelButtonClick" HorizontalContentAlignment="Center"></Button>
+                                    </StackPanel>
+                                    <!-- Hidden text input for model -->
+                                    <TextBox x:Name="CarModel" Width="250" FontSize="14" 
+                                            FontFamily="Georgia" Foreground="#bbd0ff" Watermark="Enter new model"
+                                            IsVisible="False" HorizontalAlignment="Left"></TextBox>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Parts Section - Left Column -->
+                    <Border Grid.Column="0" Grid.Row="2" Background="#1a1a1a" CornerRadius="10" Padding="25" BorderBrush="#444" BorderThickness="1">
+                        <StackPanel Spacing="20">
+                            <TextBlock Text="Parts Details" FontSize="18" FontWeight="Bold" 
+                                      FontFamily="Georgia" Foreground="#bbd0ff" 
+                                      HorizontalAlignment="Center"></TextBlock>
+                            
+                            <StackPanel Spacing="15">
+                                <!-- Part Name -->
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Part Name:" FontSize="14" FontFamily="Georgia" Foreground="#bbd0ff"></TextBlock>
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <ComboBox x:Name="PartNameDropdown" Width="250" FontSize="14" 
+                                                 FontFamily="Georgia" Foreground="#bbd0ff" 
+                                                 SelectionChanged="PartDropdownSelectionChanged"></ComboBox>
+                                        <Button x:Name="EditPartButton" Content="Edit" Width="60" Height="32"
+                                               FontSize="12" FontFamily="Georgia" Foreground="#c8b6ff"
+                                               Click="EditPartButtonClick" HorizontalContentAlignment="Center"></Button>
+                                    </StackPanel>
+                                    <!-- Hidden text input for part name -->
+                                    <TextBox x:Name="PartName" Width="250" FontSize="14" 
+                                            FontFamily="Georgia" Foreground="#bbd0ff" Watermark="Enter new part name"
+                                            TextChanged="PartNameTextChanged" IsVisible="False" HorizontalAlignment="Left"></TextBox>
+                                </StackPanel>
+                                
+                                <!-- Part Price -->
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Part Price:" FontSize="14" FontFamily="Georgia" Foreground="#bbd0ff"></TextBlock>
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBox x:Name="PartPrice" Width="250" FontSize="14" 
+                                                FontFamily="Georgia" Foreground="#bbd0ff" 
+                                                Watermark="Part Price" IsReadOnly="True"></TextBox>
+                                        <Button x:Name="EditPartPriceButton" Content="Edit" Width="60" Height="32"
+                                               FontSize="12" FontFamily="Georgia" Foreground="#c8b6ff"
+                                               Click="EditPartPriceButtonClick" HorizontalContentAlignment="Center"></Button>
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Service Section - Right Column -->
+                    <Border Grid.Column="2" Grid.Row="2" Background="#1a1a1a" CornerRadius="10" Padding="25" BorderBrush="#444" BorderThickness="1">
+                        <StackPanel Spacing="20">
+                            <TextBlock Text="Service Details" FontSize="18" FontWeight="Bold" 
+                                      FontFamily="Georgia" Foreground="#bbd0ff" 
+                                      HorizontalAlignment="Center"></TextBlock>
+                            
+                            <StackPanel Spacing="15">
+                                <!-- Service Type -->
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Service Type:" FontSize="14" FontFamily="Georgia" Foreground="#bbd0ff"></TextBlock>
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <ComboBox x:Name="ServiceTypeDropdown" Width="250" FontSize="14" 
+                                                 FontFamily="Georgia" Foreground="#bbd0ff" 
+                                                 SelectionChanged="ServiceDropdownSelectionChanged"></ComboBox>
+                                        <Button x:Name="EditServiceButton" Content="Edit" Width="60" Height="32"
+                                               FontSize="12" FontFamily="Georgia" Foreground="#c8b6ff"
+                                               Click="EditServiceButtonClick" HorizontalContentAlignment="Center"></Button>
+                                    </StackPanel>
+                                    <!-- Hidden text input for service type -->
+                                    <TextBox x:Name="ServiceType" Width="250" FontSize="14" 
+                                            FontFamily="Georgia" Foreground="#bbd0ff" Watermark="Enter new service type"
+                                            TextChanged="ServiceTypeTextChanged" IsVisible="False" HorizontalAlignment="Left"></TextBox>
+                                </StackPanel>
+                                
+                                <!-- Service Price -->
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Service Price:" FontSize="14" FontFamily="Georgia" Foreground="#bbd0ff"></TextBlock>
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <TextBox x:Name="ServicePrice" Width="250" FontSize="14" 
+                                                FontFamily="Georgia" Foreground="#bbd0ff" 
+                                                Watermark="Service Price" IsReadOnly="True"></TextBox>
+                                        <Button x:Name="EditServicePriceButton" Content="Edit" Width="60" Height="32"
+                                               FontSize="12" FontFamily="Georgia" Foreground="#c8b6ff"
+                                               Click="EditServicePriceButtonClick" HorizontalContentAlignment="Center"></Button>
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Action Buttons - Spans both columns -->
+                    <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="4" Background="#1a1a1a" CornerRadius="10" Padding="25" BorderBrush="#444" BorderThickness="1">
+                        <StackPanel Spacing="20">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="20">
+                                <Button x:Name="ClearButton" Click="ClearButtonOnClick" Content="Clear All" 
+                                       Width="130" Height="45" FontSize="16" FontFamily="Georgia" 
+                                       Foreground="#c8b6ff" Background="#333" BorderBrush="#555" HorizontalContentAlignment="Center"></Button>
+                                <Button x:Name="SaveButton" Click="SaveDataOnClick" Content="Save" 
+                                       Width="130" Height="45" FontSize="16" FontFamily="Georgia" 
+                                       Foreground="#c8b6ff" Background="#333" BorderBrush="#555" HorizontalContentAlignment="Center"></Button>
+                                <Button x:Name="PrintInvoiceButton" Click="PrintInvoiceOnClick" Content="Print Invoice" 
+                                       Width="130" Height="45" FontSize="16" FontFamily="Georgia" 
+                                       Foreground="#c8b6ff" Background="#333" BorderBrush="#555" HorizontalContentAlignment="Center"></Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Search Section - Full Width Below Grid -->
+                <Border Background="#1a1a1a" CornerRadius="10" Padding="25" BorderBrush="#444" BorderThickness="1" MaxWidth="1100" Margin="0,0,0,40">
+                    <StackPanel Spacing="20">
+                        <TextBlock Text="Search Cars" FontSize="20" FontWeight="Bold" 
+                                  FontFamily="Georgia" Foreground="#bbd0ff" 
+                                  HorizontalAlignment="Center"></TextBlock>
+                        
+                        <Grid ColumnDefinitions="*,Auto" MaxWidth="500" HorizontalAlignment="Center">
+                            <TextBox x:Name="SearchCar" Grid.Column="0" FontSize="14" FontFamily="Georgia" 
+                                    Foreground="#bbd0ff" Watermark="Enter car owner's name to search"
+                                    Margin="0,0,10,0"></TextBox>
+                            <Button x:Name="SearchCarButton" Grid.Column="1" Click="SearchCarOnClick" 
+                                   Content="Search" Width="100" Height="32" FontSize="14" 
+                                   FontFamily="Georgia" Foreground="#c8b6ff" Background="#333" BorderBrush="#555" HorizontalContentAlignment="Center"></Button>
+                        </Grid>
+                        
+                        <TextBox x:Name="SearchResult" FontSize="14" FontFamily="Georgia" 
+                                Foreground="#bbd0ff" Height="300" IsReadOnly="True" 
+                                Background="#2a2a2a" BorderBrush="#555" 
+                                AcceptsReturn="True" TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto"></TextBox>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
         </ScrollViewer>   
-</Grid>          
+    </Grid>          
 </Window>

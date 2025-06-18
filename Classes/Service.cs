@@ -1,12 +1,12 @@
 ﻿using System.Collections.Generic;
 
 namespace CarWorkshop.Classes;
-    
-    public abstract class Service
-    {
-        public int ServiceId { get; set; }
-        public required string ServiceType { get; set; }
-        public decimal ServicePrice { get; set; }
-        
-        private List<Parts> Parts { get; set; }
-    }
+
+public class Service
+{
+    public int Service_id { get; set; }
+    public required string Service_type { get; set; }
+    public decimal Service_price { get; set; }
+
+    private List<Parts> Parts { get; set; } = new();
+}
