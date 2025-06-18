@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using Dapper;
 using MySqlConnector;
+using CarWorkshop.Classes;
 
 namespace CarWorkshop.DB;
 
@@ -12,96 +12,75 @@ public class DatabaseOperations
     private const string ConnString =
         "Server=localhost;Database=Car_Workshop;User ID=datagrip_user;Password=your_password;";
 
-    // Public property to access connection string
-    public string ConnectionString => ConnString;
-
-    public int AddCarOwner(string name, string phone)
+    public InvoiceSaveResult SaveCompleteInvoice(InvoiceData invoiceData)
     {
+        using var connection = new MySqlConnection(ConnString);
+        connection.Open();
+        using var transaction = connection.BeginTransaction();
+
         try
         {
-            using var connection = new MySqlConnection(ConnString);
-            connection.Open();
-            const string sql = "INSERT INTO Car_owner (Name, Phone) VALUES (@Name, @Phone); SELECT LAST_INSERT_ID();";
-            return connection.QuerySingle<int>(sql, new { Name = name, Phone = phone });
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Error adding car owner: {ex.Message}");
-        }
-    }
+            var result = new InvoiceSaveResult();
 
-    public int AddCar(string brand, string model, int ownerId)
-    {
-        try
-        {
-            using var connection = new MySqlConnection(ConnString);
-            connection.Open();
-            const string sql =
-                "INSERT INTO Car (Brand, Model, Owner_id) VALUES (@Brand, @Model, @Owner_id); SELECT LAST_INSERT_ID();";
-            return connection.QuerySingle<int>(sql, new { Brand = brand, Model = model, Owner_id = ownerId });
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Error adding car: {ex.Message}");
-        }
-    }
+            // 1. Handle Car Owner
+            result.OwnerId =
+                GetExistingCarOwnerId(connection, transaction, invoiceData.OwnerName, invoiceData.OwnerPhone) ??
+                AddCarOwner(connection, transaction, invoiceData.OwnerName, invoiceData.OwnerPhone);
 
-    public int AddPart(string partName, decimal partPrice)
-    {
-        try
-        {
-            using var connection = new MySqlConnection(ConnString);
-            connection.Open();
-            const string sql =
-                "INSERT INTO Parts (Part_name, Part_price) VALUES (@Part_name, @Part_price); SELECT LAST_INSERT_ID();";
-            return connection.QuerySingle<int>(sql, new { Part_name = partName, Part_price = partPrice });
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Error adding part: {ex.Message}");
-        }
-    }
+            // 2. Handle Car
+            result.CarId = GetExistingCarId(connection, transaction, invoiceData.CarBrand, invoiceData.CarModel,
+                               result.OwnerId) ??
+                           AddCar(connection, transaction, invoiceData.CarBrand, invoiceData.CarModel, result.OwnerId);
 
-    public int AddService(string serviceType, decimal servicePrice)
-    {
-        try
-        {
-            using var connection = new MySqlConnection(ConnString);
-            connection.Open();
-            const string sql =
-                "INSERT INTO Service (Service_type, Service_price) VALUES (@Service_type, @Service_price); SELECT LAST_INSERT_ID();";
-            return connection.QuerySingle<int>(sql, new { Service_type = serviceType, Service_price = servicePrice });
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Error adding service: {ex.Message}");
-        }
-    }
-
-    public void AddInvoice(int carId, int serviceId, int partId, DateTime invoiceDate, decimal totalAmount)
-    {
-        try
-        {
-            using var connection = new MySqlConnection(ConnString);
-            connection.Open();
-            const string sql =
-                "INSERT INTO Car_Workshop_Invoice (Car_id, Service_id, Part_id, Invoice_date, total_amount) " +
-                "VALUES (@Car_id, @Service_id, @Part_id, @Invoice_date, @total_amount);";
-            connection.Execute(sql, new
+            // 3. Handle Part
+            var existingPartId = GetExistingPartId(connection, transaction, invoiceData.PartName);
+            if (existingPartId.HasValue)
             {
-                Car_id = carId,
-                Service_id = serviceId,
-                Part_id = partId,
-                Invoice_date = invoiceDate,
-                total_amount = totalAmount
-            });
+                result.PartId = existingPartId.Value;
+                var existingPartPrice = GetPartPrice(connection, transaction, existingPartId.Value);
+                if (existingPartPrice.HasValue && existingPartPrice.Value != invoiceData.PartPrice)
+                {
+                    UpdatePartPrice(connection, transaction, existingPartId.Value, invoiceData.PartPrice);
+                }
+            }
+            else
+            {
+                result.PartId = AddPart(connection, transaction, invoiceData.PartName, invoiceData.PartPrice);
+            }
+
+            // 4. Handle Service
+            var existingServiceId = GetExistingServiceId(connection, transaction, invoiceData.ServiceType);
+            if (existingServiceId.HasValue)
+            {
+                result.ServiceId = existingServiceId.Value;
+                var existingServicePrice = GetServicePrice(connection, transaction, existingServiceId.Value);
+                if (existingServicePrice.HasValue && existingServicePrice.Value != invoiceData.ServicePrice)
+                {
+                    UpdateServicePrice(connection, transaction, existingServiceId.Value, invoiceData.ServicePrice);
+                }
+            }
+            else
+            {
+                result.ServiceId = AddService(connection, transaction, invoiceData.ServiceType,
+                    invoiceData.ServicePrice);
+            }
+
+            // 5. Create Invoice
+            var totalAmount = invoiceData.PartPrice + invoiceData.ServicePrice;
+            AddInvoice(connection, transaction, result.CarId, result.ServiceId, result.PartId, DateTime.Now,
+                totalAmount);
+
+            transaction.Commit();
+            return result;
         }
         catch (Exception ex)
         {
-            throw new Exception($"Error adding invoice: {ex.Message}");
+            transaction.Rollback();
+            throw new Exception($"Error saving complete invoice: {ex.Message}", ex);
         }
     }
 
+    // Search and Load operations (read-only, simple connections)
     public List<CarSearchResult> SearchCarsByOwnerName(string ownerName)
     {
         try
@@ -109,9 +88,9 @@ public class DatabaseOperations
             using var connection = new MySqlConnection(ConnString);
             connection.Open();
             const string sql = @"
-                SELECT c.Car_id, c.Brand, c.Model, co.Name as OwnerName, co.Phone as OwnerPhone
+                SELECT c.CarId, c.Brand, c.Model, co.Name as OwnerName, co.Phone as OwnerPhone
                 FROM Car c
-                INNER JOIN Car_owner co ON c.Owner_id = co.Owner_id
+                INNER JOIN CarOwner co ON c.OwnerId = co.OwnerId
                 WHERE co.Name LIKE @OwnerName";
 
             return connection.Query<CarSearchResult>(sql, new { OwnerName = $"%{ownerName}%" }).ToList();
@@ -122,18 +101,18 @@ public class DatabaseOperations
         }
     }
 
-    public List<CarWorkshop.Classes.Parts> LoadParts()
+    public List<Parts> LoadParts()
     {
         try
         {
             using var connection = new MySqlConnection(ConnString);
             connection.Open();
             const string sql = @"
-                SELECT DISTINCT Part_id, Part_name, Part_price 
+                SELECT DISTINCT PartId, PartName, PartPrice 
                 FROM Parts 
-                ORDER BY Part_name";
+                ORDER BY PartName";
 
-            return connection.Query<CarWorkshop.Classes.Parts>(sql).ToList();
+            return connection.Query<Parts>(sql).ToList();
         }
         catch (Exception ex)
         {
@@ -148,8 +127,8 @@ public class DatabaseOperations
             using var connection = new MySqlConnection(ConnString);
             connection.Open();
             const string sql = @"
-                SELECT DISTINCT Owner_id, Name, Phone 
-                FROM Car_owner 
+                SELECT DISTINCT OwnerId, Name, Phone 
+                FROM CarOwner 
                 ORDER BY Name";
 
             return connection.Query<CarOwnerResult>(sql).ToList();
@@ -167,9 +146,9 @@ public class DatabaseOperations
             using var connection = new MySqlConnection(ConnString);
             connection.Open();
             const string sql = @"
-                SELECT DISTINCT Service_id, Service_type, Service_price 
+                SELECT DISTINCT ServiceId, ServiceType, ServicePrice 
                 FROM Service 
-                ORDER BY Service_type";
+                ORDER BY ServiceType";
 
             return connection.Query<ServiceResult>(sql).ToList();
         }
@@ -211,139 +190,15 @@ public class DatabaseOperations
         }
     }
 
-    public int? GetExistingCarOwnerId(string name, string phone)
-    {
-        try
-        {
-            using var connection = new MySqlConnection(ConnString);
-            connection.Open();
-            const string sql = @"SELECT Owner_id FROM Car_owner WHERE Name = @Name AND Phone = @Phone LIMIT 1";
-
-            return connection.QuerySingleOrDefault<int?>(sql, new { Name = name, Phone = phone });
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Error checking existing car owner: {ex.Message}");
-        }
-    }
-
-    public int? GetExistingPartId(string partName)
-    {
-        try
-        {
-            using var connection = new MySqlConnection(ConnString);
-            connection.Open();
-            const string sql = @"SELECT Part_id FROM Parts WHERE Part_name = @Part_name LIMIT 1";
-
-            return connection.QuerySingleOrDefault<int?>(sql, new { Part_name = partName });
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Error checking existing part: {ex.Message}");
-        }
-    }
-
-    public int? GetExistingServiceId(string serviceType)
-    {
-        try
-        {
-            using var connection = new MySqlConnection(ConnString);
-            connection.Open();
-            const string sql = @"SELECT Service_id FROM Service WHERE Service_type = @Service_type LIMIT 1";
-
-            return connection.QuerySingleOrDefault<int?>(sql, new { Service_type = serviceType });
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Error checking existing service: {ex.Message}");
-        }
-    }
-
-    public int? GetExistingCarId(string brand, string model, int ownerId)
-    {
-        try
-        {
-            using var connection = new MySqlConnection(ConnString);
-            connection.Open();
-            const string sql =
-                @"SELECT Car_id FROM Car WHERE Brand = @Brand AND Model = @Model AND Owner_id = @Owner_id LIMIT 1";
-
-            return connection.QuerySingleOrDefault<int?>(sql, new { Brand = brand, Model = model, Owner_id = ownerId });
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Error checking existing car: {ex.Message}");
-        }
-    }
-
-    public void UpdatePartPrice(int partId, decimal newPrice)
-    {
-        try
-        {
-            using var connection = new MySqlConnection(ConnString);
-            connection.Open();
-            const string sql = @"UPDATE Parts SET Part_price = @Part_price WHERE Part_id = @Part_id";
-            connection.Execute(sql, new { Part_price = newPrice, Part_id = partId });
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Error updating part price: {ex.Message}");
-        }
-    }
-
-    public void UpdateServicePrice(int serviceId, decimal newPrice)
-    {
-        try
-        {
-            using var connection = new MySqlConnection(ConnString);
-            connection.Open();
-            const string sql = @"UPDATE Service SET Service_price = @Service_price WHERE Service_id = @Service_id";
-            connection.Execute(sql, new { Service_price = newPrice, Service_id = serviceId });
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Error updating service price: {ex.Message}");
-        }
-    }
-
-    public decimal? GetPartPrice(int partId)
-    {
-        try
-        {
-            using var connection = new MySqlConnection(ConnString);
-            connection.Open();
-            const string sql = @"SELECT Part_price FROM Parts WHERE Part_id = @Part_id";
-            return connection.QuerySingleOrDefault<decimal?>(sql, new { Part_id = partId });
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Error getting part price: {ex.Message}");
-        }
-    }
-
-    public decimal? GetServicePrice(int serviceId)
-    {
-        try
-        {
-            using var connection = new MySqlConnection(ConnString);
-            connection.Open();
-            const string sql = @"SELECT Service_price FROM Service WHERE Service_id = @Service_id";
-            return connection.QuerySingleOrDefault<decimal?>(sql, new { Service_id = serviceId });
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Error getting service price: {ex.Message}");
-        }
-    }
-
+    // Individual update operations (for editing existing data)
     public void UpdateCarOwnerPhone(int ownerId, string newPhone)
     {
         try
         {
             using var connection = new MySqlConnection(ConnString);
             connection.Open();
-            const string sql = @"UPDATE Car_owner SET Phone = @Phone WHERE Owner_id = @Owner_id";
-            connection.Execute(sql, new { Phone = newPhone, Owner_id = ownerId });
+            const string sql = @"UPDATE CarOwner SET Phone = @Phone WHERE OwnerId = @OwnerId";
+            connection.Execute(sql, new { Phone = newPhone, OwnerId = ownerId });
         }
         catch (Exception ex)
         {
@@ -357,8 +212,8 @@ public class DatabaseOperations
         {
             using var connection = new MySqlConnection(ConnString);
             connection.Open();
-            const string sql = @"UPDATE Car_owner SET Name = @Name WHERE Owner_id = @Owner_id";
-            connection.Execute(sql, new { Name = newName, Owner_id = ownerId });
+            const string sql = @"UPDATE CarOwner SET Name = @Name WHERE OwnerId = @OwnerId";
+            connection.Execute(sql, new { Name = newName, OwnerId = ownerId });
         }
         catch (Exception ex)
         {
@@ -372,8 +227,8 @@ public class DatabaseOperations
         {
             using var connection = new MySqlConnection(ConnString);
             connection.Open();
-            const string sql = @"UPDATE Parts SET Part_name = @Part_name WHERE Part_id = @Part_id";
-            connection.Execute(sql, new { Part_name = newName, Part_id = partId });
+            const string sql = @"UPDATE Parts SET PartName = @PartName WHERE PartId = @PartId";
+            connection.Execute(sql, new { PartName = newName, PartId = partId });
         }
         catch (Exception ex)
         {
@@ -387,8 +242,8 @@ public class DatabaseOperations
         {
             using var connection = new MySqlConnection(ConnString);
             connection.Open();
-            const string sql = @"UPDATE Service SET Service_type = @Service_type WHERE Service_id = @Service_id";
-            connection.Execute(sql, new { Service_type = newType, Service_id = serviceId });
+            const string sql = @"UPDATE Service SET ServiceType = @ServiceType WHERE ServiceId = @ServiceId";
+            connection.Execute(sql, new { ServiceType = newType, ServiceId = serviceId });
         }
         catch (Exception ex)
         {
@@ -396,26 +251,103 @@ public class DatabaseOperations
         }
     }
 
-    public class CarSearchResult
+    // Private transaction-based methods for batch operations
+    private int AddCarOwner(MySqlConnection connection, MySqlTransaction transaction, string name, string phone)
     {
-        public int Car_id { get; set; }
-        public string Brand { get; set; } = string.Empty;
-        public string Model { get; set; } = string.Empty;
-        public string OwnerName { get; set; } = string.Empty;
-        public string OwnerPhone { get; set; } = string.Empty;
+        const string sql = "INSERT INTO CarOwner (Name, Phone) VALUES (@Name, @Phone); SELECT LAST_INSERT_ID();";
+        return connection.QuerySingle<int>(sql, new { Name = name, Phone = phone }, transaction);
     }
 
-    public class CarOwnerResult
+    private int AddCar(MySqlConnection connection, MySqlTransaction transaction, string brand, string model,
+        int ownerId)
     {
-        public int Owner_id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Phone { get; set; } = string.Empty;
+        const string sql =
+            "INSERT INTO Car (Brand, Model, OwnerId) VALUES (@Brand, @Model, @OwnerId); SELECT LAST_INSERT_ID();";
+        return connection.QuerySingle<int>(sql, new { Brand = brand, Model = model, OwnerId = ownerId }, transaction);
     }
 
-    public class ServiceResult
+    private int AddPart(MySqlConnection connection, MySqlTransaction transaction, string partName, decimal partPrice)
     {
-        public int Service_id { get; set; }
-        public string Service_type { get; set; } = string.Empty;
-        public decimal Service_price { get; set; }
+        const string sql =
+            "INSERT INTO Parts (PartName, PartPrice) VALUES (@PartName, @PartPrice); SELECT LAST_INSERT_ID();";
+        return connection.QuerySingle<int>(sql, new { PartName = partName, PartPrice = partPrice }, transaction);
+    }
+
+    private int AddService(MySqlConnection connection, MySqlTransaction transaction, string serviceType,
+        decimal servicePrice)
+    {
+        const string sql =
+            "INSERT INTO Service (ServiceType, ServicePrice) VALUES (@ServiceType, @ServicePrice); SELECT LAST_INSERT_ID();";
+        return connection.QuerySingle<int>(sql, new { ServiceType = serviceType, ServicePrice = servicePrice },
+            transaction);
+    }
+
+    private void AddInvoice(MySqlConnection connection, MySqlTransaction transaction, int carId, int serviceId,
+        int partId, DateTime invoiceDate, decimal totalAmount)
+    {
+        const string sql =
+            "INSERT INTO CarWorkshopInvoice (CarId, ServiceId, PartId, InvoiceDate, TotalAmount) " +
+            "VALUES (@CarId, @ServiceId, @PartId, @InvoiceDate, @TotalAmount);";
+        connection.Execute(sql, new
+        {
+            CarId = carId,
+            ServiceId = serviceId,
+            PartId = partId,
+            InvoiceDate = invoiceDate,
+            TotalAmount = totalAmount
+        }, transaction);
+    }
+
+    private int? GetExistingCarOwnerId(MySqlConnection connection, MySqlTransaction transaction, string name,
+        string phone)
+    {
+        const string sql = "SELECT OwnerId FROM CarOwner WHERE Name = @Name AND Phone = @Phone LIMIT 1";
+        return connection.QuerySingleOrDefault<int?>(sql, new { Name = name, Phone = phone }, transaction);
+    }
+
+    private int? GetExistingCarId(MySqlConnection connection, MySqlTransaction transaction, string brand, string model,
+        int ownerId)
+    {
+        const string sql =
+            "SELECT CarId FROM Car WHERE Brand = @Brand AND Model = @Model AND OwnerId = @OwnerId LIMIT 1";
+        return connection.QuerySingleOrDefault<int?>(sql, new { Brand = brand, Model = model, OwnerId = ownerId },
+            transaction);
+    }
+
+    private int? GetExistingPartId(MySqlConnection connection, MySqlTransaction transaction, string partName)
+    {
+        const string sql = "SELECT PartId FROM Parts WHERE PartName = @PartName LIMIT 1";
+        return connection.QuerySingleOrDefault<int?>(sql, new { PartName = partName }, transaction);
+    }
+
+    private int? GetExistingServiceId(MySqlConnection connection, MySqlTransaction transaction, string serviceType)
+    {
+        const string sql = "SELECT ServiceId FROM Service WHERE ServiceType = @ServiceType LIMIT 1";
+        return connection.QuerySingleOrDefault<int?>(sql, new { ServiceType = serviceType }, transaction);
+    }
+
+    private decimal? GetPartPrice(MySqlConnection connection, MySqlTransaction transaction, int partId)
+    {
+        const string sql = "SELECT PartPrice FROM Parts WHERE PartId = @PartId";
+        return connection.QuerySingleOrDefault<decimal?>(sql, new { PartId = partId }, transaction);
+    }
+
+    private decimal? GetServicePrice(MySqlConnection connection, MySqlTransaction transaction, int serviceId)
+    {
+        const string sql = "SELECT ServicePrice FROM Service WHERE ServiceId = @ServiceId";
+        return connection.QuerySingleOrDefault<decimal?>(sql, new { ServiceId = serviceId }, transaction);
+    }
+
+    private void UpdatePartPrice(MySqlConnection connection, MySqlTransaction transaction, int partId, decimal newPrice)
+    {
+        const string sql = "UPDATE Parts SET PartPrice = @PartPrice WHERE PartId = @PartId";
+        connection.Execute(sql, new { PartPrice = newPrice, PartId = partId }, transaction);
+    }
+
+    private void UpdateServicePrice(MySqlConnection connection, MySqlTransaction transaction, int serviceId,
+        decimal newPrice)
+    {
+        const string sql = "UPDATE Service SET ServicePrice = @ServicePrice WHERE ServiceId = @ServiceId";
+        connection.Execute(sql, new { ServicePrice = newPrice, ServiceId = serviceId }, transaction);
     }
 }

@@ -2,7 +2,7 @@
 
 public class Parts
 {
-    public int Part_id { get; set; }
-    public required string Part_name { get; set; }
-    public decimal Part_price { get; set; }
+    public int PartId { get; set; }
+    public required string PartName { get; set; }
+    public decimal PartPrice { get; set; }
 }

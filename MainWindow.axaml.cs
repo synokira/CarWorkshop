@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using CarWorkshop.DB;
+using CarWorkshop.Classes;
 
 namespace CarWorkshop;
 
@@ -17,9 +18,9 @@ public partial class MainWindow : Window
     private int? _lastPartId;
 
     // Data collections for dropdowns
-    private List<DatabaseOperations.CarOwnerResult> _carOwners = new();
-    private List<CarWorkshop.Classes.Parts> _parts = new();
-    private List<DatabaseOperations.ServiceResult> _services = new();
+    private List<CarOwnerResult> _carOwners = new();
+    private List<Parts> _parts = new();
+    private List<ServiceResult> _services = new();
     private List<string> _carBrands = new();
     private List<string> _carModels = new(); // For current brand models
 
@@ -93,9 +94,9 @@ public partial class MainWindow : Window
         var uniquePartNames = new HashSet<string>();
         foreach (var part in _parts)
         {
-            if (!string.IsNullOrEmpty(part.Part_name) && uniquePartNames.Add(part.Part_name))
+            if (!string.IsNullOrEmpty(part.PartName) && uniquePartNames.Add(part.PartName))
             {
-                PartNameDropdown.Items.Add(part.Part_name);
+                PartNameDropdown.Items.Add(part.PartName);
             }
         }
 
@@ -107,9 +108,9 @@ public partial class MainWindow : Window
         var uniqueServiceTypes = new HashSet<string>();
         foreach (var service in _services)
         {
-            if (!string.IsNullOrEmpty(service.Service_type) && uniqueServiceTypes.Add(service.Service_type))
+            if (!string.IsNullOrEmpty(service.ServiceType) && uniqueServiceTypes.Add(service.ServiceType))
             {
-                ServiceTypeDropdown.Items.Add(service.Service_type);
+                ServiceTypeDropdown.Items.Add(service.ServiceType);
             }
         }
 
@@ -364,14 +365,14 @@ public partial class MainWindow : Window
             {
                 // Just update UI state - database will be updated on Save
                 var existingPart = _parts.FirstOrDefault(p =>
-                    p.Part_name.Equals(newPartName, StringComparison.OrdinalIgnoreCase));
+                    p.PartName.Equals(newPartName, StringComparison.OrdinalIgnoreCase));
 
                 if (existingPart != null)
                 {
                     // Select existing part
                     UpdateStatus($"✓ Selected existing part: {newPartName}", "#90EE90");
-                    PartNameDropdown.SelectedItem = existingPart.Part_name;
-                    PartPrice.Text = existingPart.Part_price.ToString("F2");
+                    PartNameDropdown.SelectedItem = existingPart.PartName;
+                    PartPrice.Text = existingPart.PartPrice.ToString("F2");
                 }
                 else
                 {
@@ -447,14 +448,14 @@ public partial class MainWindow : Window
             {
                 // Just update UI state - database will be updated on Save
                 var existingService = _services.FirstOrDefault(s =>
-                    s.Service_type.Equals(newServiceType, StringComparison.OrdinalIgnoreCase));
+                    s.ServiceType.Equals(newServiceType, StringComparison.OrdinalIgnoreCase));
 
                 if (existingService != null)
                 {
                     // Select existing service
                     UpdateStatus($"✓ Selected existing service: {newServiceType}", "#90EE90");
-                    ServiceTypeDropdown.SelectedItem = existingService.Service_type;
-                    ServicePrice.Text = existingService.Service_price.ToString("F2");
+                    ServiceTypeDropdown.SelectedItem = existingService.ServiceType;
+                    ServicePrice.Text = existingService.ServicePrice.ToString("F2");
                 }
                 else
                 {
@@ -562,11 +563,11 @@ public partial class MainWindow : Window
 
         if (!string.IsNullOrEmpty(text))
         {
-            var matchingPart = _parts.FirstOrDefault(p => p.Part_name.Equals(text, StringComparison.OrdinalIgnoreCase));
+            var matchingPart = _parts.FirstOrDefault(p => p.PartName.Equals(text, StringComparison.OrdinalIgnoreCase));
             if (matchingPart != null)
             {
                 _isUpdatingFromDropdown = true;
-                PartPrice.Text = matchingPart.Part_price.ToString("F2");
+                PartPrice.Text = matchingPart.PartPrice.ToString("F2");
                 _isUpdatingFromDropdown = false;
             }
         }
@@ -587,11 +588,11 @@ public partial class MainWindow : Window
         }
         else if (!string.IsNullOrEmpty(selectedItem))
         {
-            var selectedPart = _parts.FirstOrDefault(p => p.Part_name == selectedItem);
+            var selectedPart = _parts.FirstOrDefault(p => p.PartName == selectedItem);
             if (selectedPart != null)
             {
                 _isUpdatingFromDropdown = true;
-                PartPrice.Text = selectedPart.Part_price.ToString("F2");
+                PartPrice.Text = selectedPart.PartPrice.ToString("F2");
                 _isUpdatingFromDropdown = false;
             }
         }
@@ -607,11 +608,11 @@ public partial class MainWindow : Window
         if (!string.IsNullOrEmpty(text))
         {
             var matchingService =
-                _services.FirstOrDefault(s => s.Service_type.Equals(text, StringComparison.OrdinalIgnoreCase));
+                _services.FirstOrDefault(s => s.ServiceType.Equals(text, StringComparison.OrdinalIgnoreCase));
             if (matchingService != null)
             {
                 _isUpdatingFromDropdown = true;
-                ServicePrice.Text = matchingService.Service_price.ToString("F2");
+                ServicePrice.Text = matchingService.ServicePrice.ToString("F2");
                 _isUpdatingFromDropdown = false;
             }
         }
@@ -632,11 +633,11 @@ public partial class MainWindow : Window
         }
         else if (!string.IsNullOrEmpty(selectedItem))
         {
-            var selectedService = _services.FirstOrDefault(s => s.Service_type == selectedItem);
+            var selectedService = _services.FirstOrDefault(s => s.ServiceType == selectedItem);
             if (selectedService != null)
             {
                 _isUpdatingFromDropdown = true;
-                ServicePrice.Text = selectedService.Service_price.ToString("F2");
+                ServicePrice.Text = selectedService.ServicePrice.ToString("F2");
                 _isUpdatingFromDropdown = false;
             }
         }
@@ -707,59 +708,27 @@ public partial class MainWindow : Window
                 return;
 
             // Get input values - handle both edit mode and dropdown mode
-            var ownerName = GetOwnerName();
-            var ownerPhone = CarOwnerPhone.Text?.Trim() ?? "";
-            var carBrand = GetCarBrand();
-            var carModel = GetCarModel();
-            var partName = GetPartName();
-            var partPrice = decimal.Parse(PartPrice.Text?.Trim() ?? "0");
-            var serviceType = GetServiceType();
-            var servicePrice = decimal.Parse(ServicePrice.Text?.Trim() ?? "0");
+            var invoiceData = new InvoiceData
+            {
+                OwnerName = GetOwnerName(),
+                OwnerPhone = CarOwnerPhone.Text?.Trim() ?? "",
+                CarBrand = GetCarBrand(),
+                CarModel = GetCarModel(),
+                PartName = GetPartName(),
+                PartPrice = decimal.Parse(PartPrice.Text?.Trim() ?? "0"),
+                ServiceType = GetServiceType(),
+                ServicePrice = decimal.Parse(ServicePrice.Text?.Trim() ?? "0")
+            };
 
             UpdateStatus("Saving data...", "#FFD700");
 
-            // Check for existing data and get IDs, or create new entries
-            var ownerId = _dbOps.GetExistingCarOwnerId(ownerName, ownerPhone) ??
-                          _dbOps.AddCarOwner(ownerName, ownerPhone);
+            // OPTIMIZED: Single transaction for all related operations
+            var result = _dbOps.SaveCompleteInvoice(invoiceData);
 
-            _lastCarId = _dbOps.GetExistingCarId(carBrand, carModel, ownerId) ??
-                         _dbOps.AddCar(carBrand, carModel, ownerId);
-
-            // Handle parts - check if exists, create new or update price if different
-            var existingPartId = _dbOps.GetExistingPartId(partName);
-            if (existingPartId.HasValue)
-            {
-                _lastPartId = existingPartId.Value;
-                var existingPartPrice = _dbOps.GetPartPrice(existingPartId.Value);
-                if (existingPartPrice.HasValue && existingPartPrice.Value != partPrice)
-                {
-                    _dbOps.UpdatePartPrice(existingPartId.Value, partPrice);
-                }
-            }
-            else
-            {
-                _lastPartId = _dbOps.AddPart(partName, partPrice);
-            }
-
-            // Handle services - check if exists, create new or update price if different  
-            var existingServiceId = _dbOps.GetExistingServiceId(serviceType);
-            if (existingServiceId.HasValue)
-            {
-                _lastServiceId = existingServiceId.Value;
-                var existingServicePrice = _dbOps.GetServicePrice(existingServiceId.Value);
-                if (existingServicePrice.HasValue && existingServicePrice.Value != servicePrice)
-                {
-                    _dbOps.UpdateServicePrice(existingServiceId.Value, servicePrice);
-                }
-            }
-            else
-            {
-                _lastServiceId = _dbOps.AddService(serviceType, servicePrice);
-            }
-
-            // Calculate total amount and create invoice
-            var totalAmount = partPrice + servicePrice;
-            _dbOps.AddInvoice(_lastCarId.Value, _lastServiceId.Value, _lastPartId.Value, DateTime.Now, totalAmount);
+            // Store results for invoice generation
+            _lastCarId = result.CarId;
+            _lastServiceId = result.ServiceId;
+            _lastPartId = result.PartId;
 
             UpdateStatus("✓ Data saved successfully!", "#90EE90");
 
@@ -867,7 +836,7 @@ public partial class MainWindow : Window
 
                 foreach (var car in results)
                 {
-                    sb.AppendLine($"Car ID: {car.Car_id}");
+                    sb.AppendLine($"Car ID: {car.CarId}");
                     sb.AppendLine($"Brand: {car.Brand}");
                     sb.AppendLine($"Model: {car.Model}");
                     sb.AppendLine($"Owner: {car.OwnerName}");
